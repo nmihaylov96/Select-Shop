@@ -146,6 +146,19 @@ const Header: React.FC<HeaderProps> = ({ onCartClick, onSearchClick }) => {
             >
               Контакти
             </Link>
+            
+            {/* Admin Portal - Only visible to admin users */}
+            {isAdmin && (
+              <Link 
+                href={ROUTES.ADMIN} 
+                className={cn(
+                  "nav-link font-medium text-dark hover:text-primary transition bg-gray-100 rounded-md px-3 py-1",
+                  location === ROUTES.ADMIN && "text-white bg-primary"
+                )}
+              >
+                Админ Портал
+              </Link>
+            )}
           </nav>
           
           {/* Right Navigation Icons */}
@@ -221,7 +234,7 @@ const Header: React.FC<HeaderProps> = ({ onCartClick, onSearchClick }) => {
                         className="block px-4 py-2 text-sm text-dark hover:bg-primary hover:text-white"
                         onClick={closeDropdowns}
                       >
-                        Админ панел
+                        Админ Портал
                       </Link>
                     )}
                     <button 

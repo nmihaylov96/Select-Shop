@@ -499,12 +499,170 @@ const Admin: React.FC = () => {
             <TabsContent value="orders">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold font-heading">Управление на поръчки</h2>
+                <div className="flex gap-2">
+                  <Select defaultValue="all">
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Филтрирай по статус" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Всички поръчки</SelectItem>
+                      <SelectItem value="pending">В очакване</SelectItem>
+                      <SelectItem value="processing">Обработва се</SelectItem>
+                      <SelectItem value="shipped">Изпратена</SelectItem>
+                      <SelectItem value="delivered">Доставена</SelectItem>
+                      <SelectItem value="canceled">Отказана</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input 
+                    type="text" 
+                    placeholder="Търсене на поръчка..."
+                    className="w-[250px]"
+                  />
+                </div>
               </div>
               
-              <div className="text-center py-10 bg-gray-50 rounded-lg">
-                <h3 className="text-xl font-bold mb-2">Функционалност в разработка</h3>
-                <p className="text-gray-600">Управлението на поръчки ще бъде достъпно скоро.</p>
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <Table>
+                  <TableCaption>Списък с поръчки</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px]">№</TableHead>
+                      <TableHead>Клиент</TableHead>
+                      <TableHead>Дата</TableHead>
+                      <TableHead>Адрес</TableHead>
+                      <TableHead className="text-right">Сума</TableHead>
+                      <TableHead className="text-center">Статус</TableHead>
+                      <TableHead className="text-center">Действия</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* We'll fetch real order data here later */}
+                    <TableRow>
+                      <TableCell className="font-medium">1</TableCell>
+                      <TableCell>Regular User</TableCell>
+                      <TableCell>{new Date().toLocaleDateString('bg-BG')}</TableCell>
+                      <TableCell>Ul. Ivan Vazov 12, София</TableCell>
+                      <TableCell className="text-right font-bold">249.98 лв.</TableCell>
+                      <TableCell className="text-center">
+                        <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                          В очакване
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button variant="outline" size="sm">
+                          Преглед
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">2</TableCell>
+                      <TableCell>Regular User</TableCell>
+                      <TableCell>{new Date(Date.now() - 86400000).toLocaleDateString('bg-BG')}</TableCell>
+                      <TableCell>Ul. Ivan Vazov 12, София</TableCell>
+                      <TableCell className="text-right font-bold">129.99 лв.</TableCell>
+                      <TableCell className="text-center">
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          Обработва се
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button variant="outline" size="sm">
+                          Преглед
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </div>
+              
+              {/* Order Details Dialog */}
+              <Dialog>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Поръчка #1</DialogTitle>
+                    <DialogDescription>
+                      Детайли за поръчката и статус на изпълнение
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Информация за клиента</h3>
+                      <div className="space-y-2">
+                        <p><span className="font-medium">Име:</span> Regular User</p>
+                        <p><span className="font-medium">Email:</span> user@example.com</p>
+                        <p><span className="font-medium">Телефон:</span> +359888123456</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Адрес за доставка</h3>
+                      <div className="space-y-2">
+                        <p><span className="font-medium">Адрес:</span> Ul. Ivan Vazov 12</p>
+                        <p><span className="font-medium">Град:</span> София</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-2">Продукти в поръчката</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Продукт</TableHead>
+                          <TableHead className="text-center">Количество</TableHead>
+                          <TableHead className="text-right">Цена</TableHead>
+                          <TableHead className="text-right">Общо</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell>Баскетболни обувки Nike Air Jordan XXXVI</TableCell>
+                          <TableCell className="text-center">1</TableCell>
+                          <TableCell className="text-right">189.99 лв.</TableCell>
+                          <TableCell className="text-right">189.99 лв.</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>Тенис ракета Wilson Pro Staff RF97</TableCell>
+                          <TableCell className="text-center">1</TableCell>
+                          <TableCell className="text-right">59.99 лв.</TableCell>
+                          <TableCell className="text-right">59.99 лв.</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right font-bold">Обща сума:</TableCell>
+                          <TableCell className="text-right font-bold">249.98 лв.</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-2">Статус на поръчката</h3>
+                    <div className="flex items-center gap-4">
+                      <Select defaultValue="pending">
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Избери статус" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">В очакване</SelectItem>
+                          <SelectItem value="processing">Обработва се</SelectItem>
+                          <SelectItem value="shipped">Изпратена</SelectItem>
+                          <SelectItem value="delivered">Доставена</SelectItem>
+                          <SelectItem value="canceled">Отказана</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button>Промени статуса</Button>
+                    </div>
+                  </div>
+                  
+                  <DialogFooter className="mt-6">
+                    <Button variant="outline" className="mr-2">Принтирай фактура</Button>
+                    <DialogClose asChild>
+                      <Button variant="secondary">Затвори</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
           </Tabs>
           
