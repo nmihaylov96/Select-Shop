@@ -539,7 +539,7 @@ const Admin: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* We'll fetch real order data here later */}
+                    {/* First order */}
                     <TableRow>
                       <TableCell className="font-medium">1</TableCell>
                       <TableCell>Regular User</TableCell>
@@ -552,11 +552,19 @@ const Admin: React.FC = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedOrderId(1);
+                            setIsOrderDetailDialogOpen(true);
+                          }}
+                        >
                           Преглед
                         </Button>
                       </TableCell>
                     </TableRow>
+                    {/* Second order */}
                     <TableRow>
                       <TableCell className="font-medium">2</TableCell>
                       <TableCell>Regular User</TableCell>
@@ -569,7 +577,14 @@ const Admin: React.FC = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedOrderId(2);
+                            setIsOrderDetailDialogOpen(true);
+                          }}
+                        >
                           Преглед
                         </Button>
                       </TableCell>
