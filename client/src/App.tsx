@@ -42,35 +42,41 @@ function Router() {
   );
 }
 
-function App() {
+function AppContent() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
+    <TooltipProvider>
+      <div className="font-body text-dark bg-light antialiased min-h-screen flex flex-col">
+        <Header 
+          onCartClick={() => setIsCartOpen(true)} 
+          onSearchClick={() => setIsSearchOpen(true)} 
+        />
+        <main className="flex-grow">
+          <Router />
+        </main>
+        <Footer />
+        <CartSidebar 
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)} 
+        />
+        <SearchOverlay 
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)} 
+        />
+      </div>
+      <Toaster />
+    </TooltipProvider>
+  );
+}
+
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <TooltipProvider>
-            <div className="font-body text-dark bg-light antialiased min-h-screen flex flex-col">
-              <Header 
-                onCartClick={() => setIsCartOpen(true)} 
-                onSearchClick={() => setIsSearchOpen(true)} 
-              />
-              <main className="flex-grow">
-                <Router />
-              </main>
-              <Footer />
-              <CartSidebar 
-                isOpen={isCartOpen}
-                onClose={() => setIsCartOpen(false)} 
-              />
-              <SearchOverlay 
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)} 
-              />
-            </div>
-            <Toaster />
-          </TooltipProvider>
+          <AppContent />
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>

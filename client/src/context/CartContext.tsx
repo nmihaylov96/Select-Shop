@@ -5,7 +5,6 @@ import { CartItem, Product } from '@shared/schema';
 import { CartItemWithProduct, CartState } from '@/lib/types';
 import { apiRequest } from '@/lib/queryClient';
 import { API_ENDPOINTS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '@/lib/constants';
-import { useAuth } from './AuthContext';
 import { queryClient } from '@/lib/queryClient';
 
 // Define the context type
@@ -22,7 +21,14 @@ type CartContextType = {
 // Create the cart context
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Action types
+// Initial state
+const initialState: CartState = {
+  items: [],
+  loading: false,
+  error: null,
+};
+
+// Define action types
 type CartAction =
   | { type: 'FETCH_CART_REQUEST' }
   | { type: 'FETCH_CART_SUCCESS'; payload: CartItemWithProduct[] }
@@ -39,13 +45,6 @@ type CartAction =
   | { type: 'CLEAR_CART_REQUEST' }
   | { type: 'CLEAR_CART_SUCCESS' }
   | { type: 'CLEAR_CART_FAILURE'; payload: string };
-
-// Initial state
-const initialState: CartState = {
-  items: [],
-  loading: false,
-  error: null,
-};
 
 // Reducer function
 const cartReducer = (state: CartState, action: CartAction): CartState => {
@@ -67,15 +66,15 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         loading: false,
       };
     case 'ADD_TO_CART_SUCCESS':
-      // Check if the item already exists in the cart
-      const existingItemIndex = state.items.findIndex(
+      // Check if item already exists
+      const existingIndex = state.items.findIndex(
         item => item.productId === action.payload.productId
       );
       
-      if (existingItemIndex >= 0) {
+      if (existingIndex >= 0) {
         // Update existing item
         const updatedItems = [...state.items];
-        updatedItems[existingItemIndex] = action.payload;
+        updatedItems[existingIndex] = action.payload;
         
         return {
           ...state,
@@ -131,58 +130,70 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const { toast } = useToast();
-  const { state: authState } = useAuth();
-  
-  // Fetch cart items when the user logs in
+
+  // Initialize cart on mount
   useEffect(() => {
-    if (authState.isAuthenticated) {
-      fetchCartItems();
-    } else {
-      // Clear cart when user logs out
-      dispatch({ type: 'CLEAR_CART_SUCCESS' });
-    }
-  }, [authState.isAuthenticated]);
-  
-  // Fetch cart items
-  const fetchCartItems = async () => {
-    if (!authState.isAuthenticated) return;
-    
-    dispatch({ type: 'FETCH_CART_REQUEST' });
-    
-    try {
-      const response = await fetch(API_ENDPOINTS.CART, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch cart items');
+    const fetchCart = async () => {
+      try {
+        const authResponse = await fetch(API_ENDPOINTS.AUTH.ME, { 
+          credentials: 'include' 
+        });
+        
+        if (authResponse.ok) {
+          // Only fetch cart if user is authenticated
+          dispatch({ type: 'FETCH_CART_REQUEST' });
+          
+          try {
+            const cartResponse = await fetch(API_ENDPOINTS.CART, { 
+              credentials: 'include' 
+            });
+            
+            if (cartResponse.ok) {
+              const cartData = await cartResponse.json();
+              dispatch({ type: 'FETCH_CART_SUCCESS', payload: cartData });
+            } else {
+              dispatch({ type: 'FETCH_CART_FAILURE', payload: 'Failed to fetch cart' });
+            }
+          } catch (error) {
+            dispatch({ type: 'FETCH_CART_FAILURE', payload: getErrorMessage(error) });
+          }
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
       }
-      
-      const data = await response.json();
-      dispatch({ type: 'FETCH_CART_SUCCESS', payload: data });
-    } catch (error) {
-      dispatch({ type: 'FETCH_CART_FAILURE', payload: getErrorMessage(error) });
-    }
-  };
-  
-  // Add item to cart
-  const addToCart = async (product: Product, quantity = 1) => {
-    if (!authState.isAuthenticated) {
-      toast({
-        title: 'Необходим е вход',
-        description: 'Моля, влезте в профила си, за да добавите продукти в количката.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    };
     
+    fetchCart();
+  }, []);
+
+  // Add to cart
+  const addToCart = async (product: Product, quantity = 1) => {
     dispatch({ type: 'ADD_TO_CART_REQUEST' });
     
     try {
+      // Check auth first
+      const authResponse = await fetch(API_ENDPOINTS.AUTH.ME, { 
+        credentials: 'include' 
+      });
+      
+      if (!authResponse.ok) {
+        toast({
+          title: 'Необходим е вход',
+          description: 'Моля, влезте в профила си, за да добавите продукти в количката.',
+          variant: 'destructive',
+        });
+        dispatch({ type: 'ADD_TO_CART_FAILURE', payload: 'Not authenticated' });
+        return;
+      }
+      
       const response = await apiRequest('POST', API_ENDPOINTS.CART, {
         productId: product.id,
         quantity,
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to add to cart');
+      }
       
       const data = await response.json();
       dispatch({ type: 'ADD_TO_CART_SUCCESS', payload: data });
@@ -192,7 +203,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: SUCCESS_MESSAGES.CART.ADDED,
       });
       
-      // Invalidate cart query
       queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.CART] });
     } catch (error) {
       dispatch({ type: 'ADD_TO_CART_FAILURE', payload: getErrorMessage(error) });
@@ -204,11 +214,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   };
-  
+
   // Update cart item
   const updateCartItem = async (id: number, quantity: number) => {
-    if (!authState.isAuthenticated) return;
-    
     dispatch({ type: 'UPDATE_CART_ITEM_REQUEST' });
     
     try {
@@ -216,7 +224,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         quantity,
       });
       
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('Failed to update cart item');
+      }
+      
       dispatch({ 
         type: 'UPDATE_CART_ITEM_SUCCESS', 
         payload: { id, quantity } 
@@ -227,7 +238,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: SUCCESS_MESSAGES.CART.UPDATED,
       });
       
-      // Invalidate cart query
       queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.CART] });
     } catch (error) {
       dispatch({ type: 'UPDATE_CART_ITEM_FAILURE', payload: getErrorMessage(error) });
@@ -239,15 +249,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   };
-  
+
   // Remove cart item
   const removeCartItem = async (id: number) => {
-    if (!authState.isAuthenticated) return;
-    
     dispatch({ type: 'REMOVE_CART_ITEM_REQUEST' });
     
     try {
-      await apiRequest('DELETE', API_ENDPOINTS.CART_ITEM(id));
+      const response = await apiRequest('DELETE', API_ENDPOINTS.CART_ITEM(id));
+      
+      if (!response.ok) {
+        throw new Error('Failed to remove cart item');
+      }
       
       dispatch({ type: 'REMOVE_CART_ITEM_SUCCESS', payload: id });
       
@@ -256,7 +268,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: SUCCESS_MESSAGES.CART.REMOVED,
       });
       
-      // Invalidate cart query
       queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.CART] });
     } catch (error) {
       dispatch({ type: 'REMOVE_CART_ITEM_FAILURE', payload: getErrorMessage(error) });
@@ -268,15 +279,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   };
-  
+
   // Clear cart
   const clearCart = async () => {
-    if (!authState.isAuthenticated) return;
-    
     dispatch({ type: 'CLEAR_CART_REQUEST' });
     
     try {
-      await apiRequest('DELETE', API_ENDPOINTS.CART);
+      const response = await apiRequest('DELETE', API_ENDPOINTS.CART);
+      
+      if (!response.ok) {
+        throw new Error('Failed to clear cart');
+      }
       
       dispatch({ type: 'CLEAR_CART_SUCCESS' });
       
@@ -285,7 +298,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: SUCCESS_MESSAGES.CART.CLEARED,
       });
       
-      // Invalidate cart query
       queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.CART] });
     } catch (error) {
       dispatch({ type: 'CLEAR_CART_FAILURE', payload: getErrorMessage(error) });
@@ -297,17 +309,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   };
-  
+
   // Get cart count
   const getCartCount = (): number => {
     return state.items.reduce((count, item) => count + item.quantity, 0);
   };
-  
+
   // Get cart total
   const getCartTotal = (): number => {
     return calculateTotal(state.items);
   };
-  
+
   return (
     <CartContext.Provider
       value={{
