@@ -85,6 +85,8 @@ const Admin: React.FC = () => {
   const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("products");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [isOrderDetailDialogOpen, setIsOrderDetailDialogOpen] = useState(false);
   
   // Check if user is admin
   if (!authState.isAuthenticated || !authState.user?.isAdmin) {
@@ -577,10 +579,10 @@ const Admin: React.FC = () => {
               </div>
               
               {/* Order Details Dialog */}
-              <Dialog>
+              <Dialog open={isOrderDetailDialogOpen} onOpenChange={setIsOrderDetailDialogOpen}>
                 <DialogContent className="max-w-3xl">
                   <DialogHeader>
-                    <DialogTitle>Поръчка #1</DialogTitle>
+                    <DialogTitle>Поръчка #{selectedOrderId}</DialogTitle>
                     <DialogDescription>
                       Детайли за поръчката и статус на изпълнение
                     </DialogDescription>
