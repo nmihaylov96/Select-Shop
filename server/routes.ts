@@ -88,6 +88,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     res.status(403).json({ message: "Forbidden" });
   };
+
+  // Reviews API routes - FIXED! 🌟
+  app.get("/api/reviews/:productId", async (req, res) => {
+    try {
+      const productId = parseInt(req.params.productId);
+      const reviews = await storage.getReviewsByProduct(productId);
+      res.json(reviews);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching reviews: " + error.message });
+    }
+  });
+
+  app.post("/api/reviews", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      const validatedData = {
+        userId: user.id,
+        productId: req.body.productId,
+        rating: req.body.rating,
+        comment: req.body.comment,
+      };
+      
+      // Check if product exists
+      const product = await storage.getProductById(validatedData.productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      const review = await storage.createReview(validatedData);
+      res.status(201).json(review);
+    } catch (error: any) {
+      res.status(500).json({ message: "An error occurred while creating the review: " + error.message });
+    }
+  });
   
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
