@@ -551,6 +551,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all orders for admin
+  app.get("/api/admin/orders", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const orders = await storage.getAllOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching all orders:", error);
+      res.status(500).json({ message: "An error occurred while fetching orders" });
+    }
+  });
+
   // Admin routes
   app.post("/api/admin/products", isAdmin, async (req, res) => {
     try {

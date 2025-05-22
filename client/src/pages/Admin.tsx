@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
-import { Product, Category } from '@shared/schema';
+import { Product, Category, Order } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
