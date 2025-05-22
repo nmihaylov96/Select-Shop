@@ -5,7 +5,8 @@ import {
   Testimonial, InsertTestimonial, testimonials,
   CartItem, InsertCartItem, cartItems,
   Order, InsertOrder, orders,
-  OrderItem, InsertOrderItem, orderItems
+  OrderItem, InsertOrderItem, orderItems,
+  Review, InsertReview, reviews
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
