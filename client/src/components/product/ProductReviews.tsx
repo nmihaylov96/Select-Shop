@@ -31,7 +31,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
   const [showReviewForm, setShowReviewForm] = useState(false);
 
   const { data: reviews, isLoading } = useQuery<ReviewWithUser[]>({
-    queryKey: ['/api/reviews', productId],
+    queryKey: [`/api/reviews/${productId}`],
   });
 
   const createReviewMutation = useMutation({
@@ -41,7 +41,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
         ...reviewData,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/reviews', productId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reviews/${productId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
       setNewComment("");
       setNewRating(5);
