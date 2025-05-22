@@ -383,6 +383,17 @@ const Checkout: React.FC = () => {
                     <CardDescription>Въведете данните за вашата карта</CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {/* Test Card Information */}
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Тестови карти за демонстрация</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p><strong>Успешно плащане:</strong> 4242 4242 4242 4242</p>
+                        <p><strong>Неуспешно плащане:</strong> 4000 0000 0000 0002</p>
+                        <p><strong>Изтичащ срок:</strong> Всяка бъдеща дата (напр. 12/25)</p>
+                        <p><strong>CVC:</strong> Всеки 3-цифрен код (напр. 123)</p>
+                      </div>
+                    </div>
+                    
                     <Elements stripe={stripePromise} options={options}>
                       <CheckoutForm 
                         clientSecret={clientSecret} 
