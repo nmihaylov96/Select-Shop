@@ -521,6 +521,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }))
       );
       
+      // Clear cart after successful order
+      await storage.clearCart(user.id);
+      
+      // Send order confirmation email
+      if (user.email) {
+        try {
+          await sendOrderConfirmationEmail({
+            order,
+            orderItems: cartItems.map(item => ({
+              id: 0, // Not needed for email
+              orderId: order.id,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.product.discountedPrice || item.product.price,
+              product: item.product
+            })),
+            user
+          });
+          console.log(`[order] Email confirmation sent for order #${order.id}`);
+        } catch (emailError) {
+          console.error(`[order] Failed to send email for order #${order.id}:`, emailError);
+          // Don't fail the order creation if email fails
+        }
+      }
+      
       res.status(201).json(order);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -574,10 +599,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Status is required" });
       }
       
+      // Get the order before updating to know the old status
+      const existingOrder = await storage.getOrderById(orderId);
+      
+      if (!existingOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      const oldStatus = existingOrder.status;
+      
       const updatedOrder = await storage.updateOrderStatus(orderId, status);
       
       if (!updatedOrder) {
         return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // Send email notification if status changed
+      if (oldStatus !== status) {
+        try {
+          const user = await storage.getUser(updatedOrder.userId);
+          if (user && user.email) {
+            await sendOrderStatusUpdateEmail(user, updatedOrder, oldStatus, status);
+            console.log(`[order] Status update email sent for order #${orderId}: ${oldStatus} -> ${status}`);
+          }
+        } catch (emailError) {
+          console.error(`[order] Failed to send status update email for order #${orderId}:`, emailError);
+          // Don't fail the status update if email fails
+        }
       }
       
       res.json(updatedOrder);
