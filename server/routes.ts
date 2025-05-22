@@ -3,11 +3,17 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import Stripe from "stripe";
 import passport from "passport";
 import LocalStrategy from "passport-local";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { insertUserSchema, insertCartItemSchema, insertOrderSchema, User, InsertUser } from "@shared/schema";
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2023-10-16",
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session

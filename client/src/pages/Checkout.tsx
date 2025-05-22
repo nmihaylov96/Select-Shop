@@ -1,10 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link, useLocation } from 'wouter';
-import { ROUTES, API_ENDPOINTS } from '@/lib/constants';
+import { useLocation } from 'wouter';
+import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
+import { useToast } from '@/hooks/use-toast';
+import { ROUTES } from '@/lib/constants';
+import { apiRequest } from '@/lib/queryClient';
+import { formatPrice } from '@/lib/utils';
+import { 
+  loadStripe, 
+  StripeElementsOptions,
+} from '@stripe/stripe-js';
+import { 
+  Elements, 
+  PaymentElement, 
+  useStripe, 
+  useElements 
+} from '@stripe/react-stripe-js';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -14,150 +44,232 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/AuthContext';
-import { useCart } from '@/context/CartContext';
-import { formatPrice, calculateTotal } from '@/lib/utils';
-import { useMutation } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { queryClient } from '@/lib/queryClient';
-import { CartItemWithProduct } from '@/lib/types';
-import { 
-  VisaIcon, 
-  MastercardIcon, 
-  PayPalIcon, 
-  CashIcon 
-} from '@/lib/icons';
+import { useForm } from "react-hook-form";
 
-// Checkout form schema
-const checkoutSchema = z.object({
-  firstName: z.string().min(2, { message: "Името трябва да бъде поне 2 символа" }),
-  lastName: z.string().min(2, { message: "Фамилията трябва да бъде поне 2 символа" }),
-  email: z.string().email({ message: "Невалиден имейл адрес" }),
-  phone: z.string().min(10, { message: "Телефонът трябва да бъде поне 10 символа" }),
+// Make sure to call loadStripe outside of a component's render to avoid
+// recreating the Stripe object on every render.
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+
+// Shipping form schema
+const shippingSchema = z.object({
   address: z.string().min(5, { message: "Адресът трябва да бъде поне 5 символа" }),
   city: z.string().min(2, { message: "Градът трябва да бъде поне 2 символа" }),
-  zipCode: z.string().min(4, { message: "Пощенският код трябва да бъде поне 4 символа" }),
-  paymentMethod: z.enum(["card", "paypal", "cash"], {
-    required_error: "Моля, изберете метод на плащане",
-  }),
-  notes: z.string().optional(),
+  phone: z.string().min(10, { message: "Невалиден телефонен номер" }),
 });
 
-type CheckoutFormValues = z.infer<typeof checkoutSchema>;
+type ShippingFormValues = z.infer<typeof shippingSchema>;
 
+// CheckoutForm component that contains the payment elements
+const CheckoutForm = ({ clientSecret, onSuccess }: { clientSecret: string, onSuccess: () => void }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setPaymentError(null);
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.origin + '/payment-confirmation',
+      },
+      redirect: 'if_required'
+    });
+
+    setIsProcessing(false);
+
+    if (error) {
+      setPaymentError(error.message || "Възникна грешка при обработката на плащането");
+      toast({
+        title: "Грешка при плащане",
+        description: error.message || "Възникна грешка при обработката на плащането",
+        variant: "destructive",
+      });
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      toast({
+        title: "Успешно плащане",
+        description: "Вашето плащане беше успешно обработено",
+      });
+      onSuccess();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 space-y-6">
+      <PaymentElement />
+      
+      {paymentError && (
+        <div className="text-sm text-red-500 mt-2">
+          {paymentError}
+        </div>
+      )}
+      
+      <Button 
+        disabled={!stripe || isProcessing} 
+        className="w-full"
+        type="submit"
+      >
+        {isProcessing ? "Обработване..." : "Плати сега"}
+      </Button>
+    </form>
+  );
+};
+
+// Main Checkout component
 const Checkout: React.FC = () => {
   const { state: authState } = useAuth();
   const { state: cartState, clearCart } = useCart();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [clientSecret, setClientSecret] = useState<string>("");
+  const [shippingInfo, setShippingInfo] = useState<ShippingFormValues | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   
-  // Redirect if not authenticated
-  if (!authState.isAuthenticated) {
-    navigate(`${ROUTES.LOGIN}?redirect=${ROUTES.CHECKOUT}`);
-    return null;
-  }
-  
-  // Redirect if cart is empty
-  if (cartState.items.length === 0 && !cartState.loading) {
-    navigate(ROUTES.PRODUCTS);
-    return null;
-  }
-  
-  const user = authState.user;
-  const cartItems = cartState.items;
-  const cartTotal = calculateTotal(cartItems);
-  const shippingCost = cartTotal > 50 ? 0 : 4.99;
-  const totalWithShipping = cartTotal + shippingCost;
-  
-  // Initialize form
-  const form = useForm<CheckoutFormValues>({
-    resolver: zodResolver(checkoutSchema),
+  // Initialize shipping form
+  const form = useForm<ShippingFormValues>({
+    resolver: zodResolver(shippingSchema),
     defaultValues: {
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      email: user?.email || "",
-      phone: user?.phone || "",
-      address: user?.address || "",
-      city: user?.city || "",
-      zipCode: "",
-      paymentMethod: "cash",
-      notes: "",
+      address: authState.user?.address || "",
+      city: authState.user?.city || "",
+      phone: authState.user?.phone || "",
     },
   });
   
-  // Update payment method when changed in form
-  form.watch("paymentMethod", (value) => {
-    if (value) {
-      setPaymentMethod(value);
-    }
-  });
-  
-  // Place order mutation
-  const placeOrderMutation = useMutation({
-    mutationFn: async (data: {
-      address: string;
-      city: string;
-      phone: string;
-    }) => {
-      const response = await apiRequest('POST', API_ENDPOINTS.ORDERS, data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.CART] });
+  // Check if user is logged in
+  useEffect(() => {
+    if (!authState.isAuthenticated) {
       toast({
-        title: "Поръчката е направена успешно",
-        description: "Ще получите имейл с потвърждение на поръчката.",
-      });
-      clearCart();
-      navigate('/');
-    },
-    onError: (error) => {
-      toast({
-        title: "Грешка при създаване на поръчка",
-        description: "Възникна проблем. Моля, опитайте отново.",
+        title: "Необходимо е да влезете в профила си",
+        description: "Моля, влезте в профила си, за да продължите с поръчката",
         variant: "destructive",
       });
-    },
-  });
+      navigate(ROUTES.LOGIN);
+    }
+  }, [authState.isAuthenticated, navigate, toast]);
   
-  // Form submission handler
-  const onSubmit = (values: CheckoutFormValues) => {
-    placeOrderMutation.mutate({
-      address: values.address,
-      city: values.city,
-      phone: values.phone,
-    });
+  // Check if cart is empty
+  useEffect(() => {
+    if (cartState.items.length === 0 && !isCreatingOrder) {
+      toast({
+        title: "Празна количка",
+        description: "Вашата количка е празна",
+        variant: "destructive",
+      });
+      navigate(ROUTES.HOME);
+    }
+  }, [cartState.items.length, navigate, toast, isCreatingOrder]);
+  
+  // Calculate cart total
+  const cartTotal = cartState.items.reduce((total, item) => {
+    return total + (item.product.discountedPrice || item.product.price) * item.quantity;
+  }, 0);
+  
+  // Handle shipping form submission
+  const onShippingSubmit = async (values: ShippingFormValues) => {
+    setShippingInfo(values);
+    
+    try {
+      const response = await apiRequest("POST", "/api/create-payment-intent", {
+        amount: cartTotal,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to create payment intent");
+      }
+      
+      const data = await response.json();
+      setClientSecret(data.clientSecret);
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      toast({
+        title: "Грешка",
+        description: "Възникна грешка при подготовката на плащането",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Handle successful payment
+  const handlePaymentSuccess = async () => {
+    if (!shippingInfo) return;
+    
+    setIsCreatingOrder(true);
+    
+    try {
+      // Create order
+      const orderResponse = await apiRequest("POST", "/api/orders", {
+        ...shippingInfo,
+        total: cartTotal,
+        items: cartState.items.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.product.discountedPrice || item.product.price,
+        })),
+      });
+      
+      if (!orderResponse.ok) {
+        throw new Error("Failed to create order");
+      }
+      
+      // Clear cart
+      await clearCart();
+      
+      toast({
+        title: "Поръчката е успешна",
+        description: "Благодарим ви за вашата поръчка!",
+      });
+      
+      // Navigate to confirmation page or home
+      navigate(ROUTES.PROFILE);
+    } catch (error) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "Грешка",
+        description: "Възникна грешка при създаването на поръчката",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+  
+  const options: StripeElementsOptions = {
+    clientSecret,
+    appearance: {
+      theme: 'stripe',
+      variables: {
+        colorPrimary: '#3b82f6',
+      },
+    },
   };
   
   return (
     <>
       <Helmet>
-        <title>Завършване на поръчката - SportZone</title>
-        <meta 
-          name="description" 
-          content="Завършете вашата поръчка в SportZone. Безопасна и бърза доставка на спортни стоки." 
-        />
+        <title>Плащане - SportZone</title>
       </Helmet>
       
       <div className="py-10 bg-gray-100">
         <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-4 font-heading">Завършване на поръчката</h1>
+          <h1 className="text-4xl font-bold mb-4 font-heading">Плащане</h1>
           <nav className="flex" aria-label="Breadcrumb">
             <ol className="inline-flex items-center space-x-1 md:space-x-3">
               <li className="inline-flex items-center">
-                <Link href={ROUTES.HOME} className="text-gray-600 hover:text-primary">
-                  Начало
-                </Link>
+                <a href="/" className="text-gray-600 hover:text-primary">Начало</a>
               </li>
               <li className="flex items-center">
                 <span className="mx-2 text-gray-400">/</span>
-                <span className="text-primary">Завършване на поръчката</span>
+                <span className="text-primary">Плащане</span>
               </li>
             </ol>
           </nav>
@@ -166,28 +278,65 @@ const Checkout: React.FC = () => {
       
       <div className="py-16">
         <div className="container mx-auto px-4">
-          {cartState.loading ? (
-            <div className="flex justify-center py-20">
-              <div className="loading-spinner w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column - Order Details */}
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Преглед на поръчката</CardTitle>
+                  <CardDescription>Проверете артикулите във вашата поръчка</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {cartState.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between border-b pb-3">
+                        <div className="flex items-center">
+                          <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden mr-4">
+                            <img 
+                              src={item.product.image} 
+                              alt={item.product.name} 
+                              className="w-full h-full object-cover" 
+                            />
+                          </div>
+                          <div>
+                            <h3 className="font-medium">{item.product.name}</h3>
+                            <p className="text-sm text-gray-500">Количество: {item.quantity}</p>
+                          </div>
+                        </div>
+                        <div className="text-right font-medium">
+                          {formatPrice((item.product.discountedPrice || item.product.price) * item.quantity)}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="flex justify-between pt-3">
+                      <span className="font-medium">Общо:</span>
+                      <span className="font-bold text-lg">{formatPrice(cartTotal)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row gap-8">
-              {/* Checkout Form */}
-              <div className="w-full lg:w-2/3">
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                  <h2 className="text-2xl font-bold mb-6 font-heading">Информация за доставка</h2>
-                  
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Right Column - Payment */}
+            <div>
+              {!clientSecret ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Информация за доставка</CardTitle>
+                    <CardDescription>Попълнете вашите данни за доставка</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onShippingSubmit)} className="space-y-6">
                         <FormField
                           control={form.control}
-                          name="firstName"
+                          name="address"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Име *</FormLabel>
+                              <FormLabel>Адрес</FormLabel>
                               <FormControl>
-                                <Input placeholder="Вашето име" {...field} />
+                                <Input placeholder="ул. Иван Вазов 12" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -196,28 +345,12 @@ const Checkout: React.FC = () => {
                         
                         <FormField
                           control={form.control}
-                          name="lastName"
+                          name="city"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Фамилия *</FormLabel>
+                              <FormLabel>Град</FormLabel>
                               <FormControl>
-                                <Input placeholder="Вашата фамилия" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Имейл адрес *</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Вашият имейл" {...field} />
+                                <Input placeholder="София" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -229,269 +362,38 @@ const Checkout: React.FC = () => {
                           name="phone"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Телефон *</FormLabel>
+                              <FormLabel>Телефон</FormLabel>
                               <FormControl>
-                                <Input placeholder="Вашият телефон" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <FormField
-                        control={form.control}
-                        name="address"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Адрес *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Вашият адрес" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormField
-                          control={form.control}
-                          name="city"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Град *</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Вашият град" {...field} />
+                                <Input placeholder="+359888123456" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                         
-                        <FormField
-                          control={form.control}
-                          name="zipCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Пощенски код *</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Пощенски код" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <FormField
-                        control={form.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Бележки по поръчката</FormLabel>
-                            <FormControl>
-                              <textarea 
-                                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Специални инструкции за доставка" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        <Button type="submit" className="w-full">Продължи към плащане</Button>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Плащане</CardTitle>
+                    <CardDescription>Въведете данните за вашата карта</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Elements stripe={stripePromise} options={options}>
+                      <CheckoutForm 
+                        clientSecret={clientSecret} 
+                        onSuccess={handlePaymentSuccess} 
                       />
-                      
-                      <div>
-                        <h3 className="text-lg font-bold mb-4 font-heading">Метод на плащане</h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="paymentMethod"
-                            render={({ field }) => (
-                              <>
-                                <div 
-                                  className={`border rounded-md p-4 cursor-pointer flex items-center ${field.value === 'card' ? 'border-primary bg-blue-50' : 'border-gray-200'}`}
-                                  onClick={() => field.onChange('card')}
-                                >
-                                  <input
-                                    type="radio"
-                                    id="card"
-                                    className="mr-2"
-                                    checked={field.value === 'card'}
-                                    onChange={() => field.onChange('card')}
-                                  />
-                                  <div>
-                                    <Label htmlFor="card" className="font-medium cursor-pointer">Карта</Label>
-                                    <div className="flex mt-1 space-x-1">
-                                      <span className="text-xl"><VisaIcon /></span>
-                                      <span className="text-xl"><MastercardIcon /></span>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div 
-                                  className={`border rounded-md p-4 cursor-pointer flex items-center ${field.value === 'paypal' ? 'border-primary bg-blue-50' : 'border-gray-200'}`}
-                                  onClick={() => field.onChange('paypal')}
-                                >
-                                  <input
-                                    type="radio"
-                                    id="paypal"
-                                    className="mr-2"
-                                    checked={field.value === 'paypal'}
-                                    onChange={() => field.onChange('paypal')}
-                                  />
-                                  <div>
-                                    <Label htmlFor="paypal" className="font-medium cursor-pointer">PayPal</Label>
-                                    <div className="flex mt-1">
-                                      <span className="text-xl"><PayPalIcon /></span>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div 
-                                  className={`border rounded-md p-4 cursor-pointer flex items-center ${field.value === 'cash' ? 'border-primary bg-blue-50' : 'border-gray-200'}`}
-                                  onClick={() => field.onChange('cash')}
-                                >
-                                  <input
-                                    type="radio"
-                                    id="cash"
-                                    className="mr-2"
-                                    checked={field.value === 'cash'}
-                                    onChange={() => field.onChange('cash')}
-                                  />
-                                  <div>
-                                    <Label htmlFor="cash" className="font-medium cursor-pointer">Наложен платеж</Label>
-                                    <div className="flex mt-1">
-                                      <span className="text-xl"><CashIcon /></span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <FormMessage />
-                              </>
-                            )}
-                          />
-                        </div>
-                      </div>
-                      
-                      {paymentMethod === 'card' && (
-                        <div className="p-6 border border-primary rounded-md bg-blue-50">
-                          <h3 className="text-lg font-bold mb-4 font-heading">Информация за картата</h3>
-                          
-                          <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="card-number">Номер на картата</Label>
-                              <Input id="card-number" placeholder="1234 5678 9012 3456" />
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="expiry">Валидна до</Label>
-                                <Input id="expiry" placeholder="MM/YY" />
-                              </div>
-                              
-                              <div>
-                                <Label htmlFor="cvv">CVV</Label>
-                                <Input id="cvv" placeholder="123" />
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <Label htmlFor="card-name">Име на картата</Label>
-                              <Input id="card-name" placeholder="Име върху картата" />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {paymentMethod === 'paypal' && (
-                        <div className="p-6 border border-primary rounded-md bg-blue-50">
-                          <p className="text-gray-700">Ще бъдете пренасочени към PayPal за завършване на плащането след като потвърдите поръчката.</p>
-                        </div>
-                      )}
-                      
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-primary hover:bg-blue-600 text-lg py-6"
-                        disabled={placeOrderMutation.isPending}
-                      >
-                        {placeOrderMutation.isPending ? "Обработка..." : "Завърши поръчката"}
-                      </Button>
-                    </form>
-                  </Form>
-                </div>
-              </div>
-              
-              {/* Order Summary */}
-              <div className="w-full lg:w-1/3">
-                <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
-                  <h2 className="text-2xl font-bold mb-6 font-heading">Вашата поръчка</h2>
-                  
-                  <div className="space-y-4 mb-6">
-                    {cartItems.map(item => (
-                      <div key={item.id} className="flex gap-4">
-                        <div className="w-20 h-20 flex-shrink-0">
-                          <img 
-                            src={item.product.image} 
-                            alt={item.product.name} 
-                            className="w-full h-full object-cover rounded-md"
-                          />
-                        </div>
-                        <div className="flex-grow">
-                          <h3 className="font-medium">{item.product.name}</h3>
-                          <div className="flex justify-between text-sm text-gray-600">
-                            <span>Количество: {item.quantity}</span>
-                            <span>
-                              {formatPrice(
-                                (item.product.discountedPrice || item.product.price) * item.quantity
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <Separator className="my-4" />
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Междинна сума:</span>
-                      <span>{formatPrice(cartTotal)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Доставка:</span>
-                      <span>
-                        {shippingCost === 0 
-                          ? "Безплатна" 
-                          : formatPrice(shippingCost)
-                        }
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <Separator className="my-4" />
-                  
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Общо:</span>
-                    <span className="text-primary">{formatPrice(totalWithShipping)}</span>
-                  </div>
-                  
-                  {shippingCost === 0 && (
-                    <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
-                      Получавате безплатна доставка!
-                    </div>
-                  )}
-                  
-                  {cartTotal < 50 && shippingCost > 0 && (
-                    <div className="mt-4 p-3 bg-blue-50 text-blue-700 rounded-md text-sm">
-                      Добавете още продукти за {formatPrice(50 - cartTotal)} за безплатна доставка.
-                    </div>
-                  )}
-                </div>
-              </div>
+                    </Elements>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </>
