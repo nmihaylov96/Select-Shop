@@ -36,6 +36,14 @@ const ProductDetail: React.FC = () => {
     enabled: !!product,
   });
 
+  // Fetch reviews to get actual count
+  const { data: reviews } = useQuery<any[]>({
+    queryKey: ['/api/reviews', productId],
+    enabled: !!productId,
+  });
+
+  const actualReviewCount = reviews ? reviews.length : 0;
+
   // Helper to render the stars based on rating
   const renderRating = (rating: number) => {
     const stars = [];
@@ -276,7 +284,7 @@ const ProductDetail: React.FC = () => {
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="description">Описание</TabsTrigger>
               <TabsTrigger value="specifications">Спецификации</TabsTrigger>
-              <TabsTrigger value="reviews">Отзиви ({product.reviewCount})</TabsTrigger>
+              <TabsTrigger value="reviews">Отзиви ({actualReviewCount})</TabsTrigger>
             </TabsList>
             <TabsContent value="description" className="p-6 bg-white rounded-b-lg shadow-md">
               <h3 className="text-xl font-bold mb-4">Описание на продукта</h3>
