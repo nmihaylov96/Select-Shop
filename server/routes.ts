@@ -695,6 +695,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "An error occurred while creating the category" });
     }
   });
+
+  // Test email endpoint
+  app.post("/api/test-email", async (req, res) => {
+    try {
+      const testUser = {
+        id: 1,
+        username: "test",
+        email: "patoka2311@gmail.com", // Replace with your email
+        firstName: "Test",
+        lastName: "User",
+        password: "",
+        address: null,
+        city: null,
+        phone: null,
+        isAdmin: false,
+      };
+
+      const testOrder = {
+        id: 999,
+        userId: 1,
+        total: 99.99,
+        status: "pending",
+        address: "Test Address 123",
+        city: "Test City",
+        phone: "+359 888 123 456",
+        createdAt: new Date(),
+      };
+
+      const testOrderItems = [{
+        id: 1,
+        orderId: 999,
+        productId: 1,
+        quantity: 1,
+        price: 99.99,
+        product: {
+          id: 1,
+          name: "Test Product",
+          nameEn: "Test Product",
+          description: "Test Description",
+          descriptionEn: "Test Description",
+          price: 99.99,
+          discountedPrice: null,
+          categoryId: 1,
+          image: "test.jpg",
+          rating: null,
+          stockQuantity: 10,
+          brand: "Test Brand",
+          featured: false,
+        }
+      }];
+
+      const result = await sendOrderConfirmationEmail({
+        order: testOrder,
+        orderItems: testOrderItems,
+        user: testUser
+      });
+
+      res.json({ 
+        success: result,
+        message: result ? "Test email sent successfully!" : "Failed to send test email"
+      });
+    } catch (error) {
+      console.error("Test email error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error sending test email",
+        error: error.message
+      });
+    }
+  });
   
   const httpServer = createServer(app);
   
