@@ -9,6 +9,7 @@ import LocalStrategy from "passport-local";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { insertUserSchema, insertCartItemSchema, insertOrderSchema, User, InsertUser } from "@shared/schema";
+import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from './email';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
