@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { CartIcon, StarIcon, HalfStarIcon, EmptyStarIcon } from '@/lib/icons';
 import { useCart } from '@/context/CartContext';
+import ProductCard from '@/components/product/ProductCard';
 
 const ProductDetail: React.FC = () => {
   const [match, params] = useRoute<{ id: string }>('/product/:id');
