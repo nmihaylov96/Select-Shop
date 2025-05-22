@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { CartIcon, StarIcon, HalfStarIcon, EmptyStarIcon } from '@/lib/icons';
 import { useCart } from '@/context/CartContext';
 import ProductCard from '@/components/product/ProductCard';
+import ProductReviews from '@/components/product/ProductReviews';
 
 const ProductDetail: React.FC = () => {
   const [match, params] = useRoute<{ id: string }>('/product/:id');
@@ -310,43 +311,7 @@ const ProductDetail: React.FC = () => {
               </table>
             </TabsContent>
             <TabsContent value="reviews" className="p-6 bg-white rounded-b-lg shadow-md">
-              <h3 className="text-xl font-bold mb-4">Отзиви от клиенти</h3>
-              {product.reviewCount > 0 ? (
-                <div className="space-y-6">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center mb-2">
-                      <div className="flex text-yellow-400 mr-2">
-                        {renderRating(5)}
-                      </div>
-                      <span className="font-bold">Иван Петров</span>
-                    </div>
-                    <p className="text-gray-700">
-                      Отличен продукт на добра цена. Доставката беше бърза и всичко пристигна в перфектно състояние. Препоръчвам!
-                    </p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Публикуван на: 15.03.2023
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center mb-2">
-                      <div className="flex text-yellow-400 mr-2">
-                        {renderRating(4)}
-                      </div>
-                      <span className="font-bold">Мария Стоянова</span>
-                    </div>
-                    <p className="text-gray-700">
-                      Много съм доволна от покупката. Качеството е дори по-добро, отколкото очаквах.
-                    </p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Публикуван на: 02.04.2023
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-500">
-                  Все още няма отзиви за този продукт. Бъдете първите, които ще споделят своето мнение!
-                </p>
-              )}
+              <ProductReviews productId={product.id} />
             </TabsContent>
           </Tabs>
         </div>
