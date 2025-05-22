@@ -290,4 +290,33 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedOrder || undefined;
   }
+
+  async getReviewsByProduct(productId: number): Promise<any[]> {
+    const reviewsWithUsers = await db
+      .select({
+        id: reviews.id,
+        userId: reviews.userId,
+        productId: reviews.productId,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        user: {
+          username: users.username,
+        },
+      })
+      .from(reviews)
+      .leftJoin(users, eq(reviews.userId, users.id))
+      .where(eq(reviews.productId, productId))
+      .orderBy(desc(reviews.createdAt));
+    
+    return reviewsWithUsers;
+  }
+
+  async createReview(reviewData: any): Promise<any> {
+    const [review] = await db
+      .insert(reviews)
+      .values(reviewData)
+      .returning();
+    return review;
+  }
 }

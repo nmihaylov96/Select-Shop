@@ -50,6 +50,10 @@ export interface IStorage {
   getOrderById(id: number): Promise<Order | undefined>;
   getOrderItemsByOrder(orderId: number): Promise<OrderItem[]>;
   updateOrderStatus(orderId: number, status: string): Promise<Order | undefined>;
+  
+  // Review operations
+  getReviewsByProduct(productId: number): Promise<any[]>;
+  createReview(review: any): Promise<any>;
 }
 
 export class MemStorage implements IStorage {
