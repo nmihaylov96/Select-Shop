@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -162,7 +163,9 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             <p className="text-gray-600 mb-4">
               Трябва да влезете в профила си, за да можете да оставите отзив.
             </p>
-            <Button>Вход</Button>
+            <Link href="/login">
+              <Button>Вход</Button>
+            </Link>
           </CardContent>
         </Card>
       )}
