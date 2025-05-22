@@ -697,7 +697,14 @@ const Admin: React.FC = () => {
                   <div className="mt-6">
                     <h3 className="text-lg font-semibold mb-2">Статус на поръчката</h3>
                     <div className="flex items-center gap-4">
-                      <Select defaultValue="pending">
+                      <Select 
+                        value={orders?.find(o => o.id === selectedOrderId)?.status || 'pending'}
+                        onValueChange={(newStatus) => {
+                          if (selectedOrderId) {
+                            handleOrderStatusChange(selectedOrderId, newStatus);
+                          }
+                        }}
+                      >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Избери статус" />
                         </SelectTrigger>
@@ -709,11 +716,20 @@ const Admin: React.FC = () => {
                           <SelectItem value="canceled">Отказана</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Button>Промени статуса</Button>
+                      <span className="text-sm text-gray-500">
+                        Статусът се актуализира автоматично
+                      </span>
                     </div>
                   </div>
                   
                   <DialogFooter className="mt-6">
+                    <Button 
+                      variant="outline" 
+                      className="mr-2"
+                      onClick={() => setIsOrderDetailDialogOpen(false)}
+                    >
+                      Назад към поръчки
+                    </Button>
                     <Button variant="outline" className="mr-2">Принтирай фактура</Button>
                     <DialogClose asChild>
                       <Button variant="secondary">Затвори</Button>
