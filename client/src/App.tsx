@@ -15,6 +15,7 @@ import Register from "@/pages/Register";
 import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
 import Checkout from "@/pages/Checkout";
+import PaymentConfirmation from "@/pages/PaymentConfirmation";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import CartSidebar from "@/components/cart/CartSidebar";
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/admin" component={Admin} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/payment-confirmation" component={PaymentConfirmation} />
       <Route component={NotFound} />
     </Switch>
   );

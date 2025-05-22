@@ -12,7 +12,7 @@ import { insertUserSchema, insertCartItemSchema, insertOrderSchema, User, Insert
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2023-10-16" as any,
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -279,6 +279,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(testimonials);
     } catch (error) {
       res.status(500).json({ message: "An error occurred while fetching testimonials" });
+    }
+  });
+  
+  // Stripe Payment Integration
+  app.post("/api/create-payment-intent", async (req, res) => {
+    try {
+      const { amount } = req.body;
+      
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents for Stripe
+        currency: "bgn", // Bulgarian lev
+        payment_method_types: ["card"],
+        metadata: {
+          integration_check: 'accept_a_payment'
+        }
+      });
+      
+      res.json({
+        clientSecret: paymentIntent.client_secret
+      });
+    } catch (error: any) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ 
+        message: "Error creating payment intent",
+        error: error.message
+      });
     }
   });
   
