@@ -59,12 +59,6 @@ const Profile: React.FC = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const { toast } = useToast();
   
-  // Redirect if not authenticated
-  if (!authState.isAuthenticated) {
-    navigate(`${ROUTES.LOGIN}?redirect=${ROUTES.PROFILE}`);
-    return null;
-  }
-  
   const user = authState.user;
   
   // Fetch orders
