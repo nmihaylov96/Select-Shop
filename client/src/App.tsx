@@ -37,6 +37,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/profile" component={Profile} />
+      <Route path="/my-orders" component={MyOrders} />
       <Route path="/admin" component={Admin} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/payment-confirmation" component={PaymentConfirmation} />
