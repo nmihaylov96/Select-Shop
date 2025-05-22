@@ -527,6 +527,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "An error occurred while fetching the order" });
     }
   });
+
+  // Update order status (Admin only)
+  app.patch("/api/orders/:id/status", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const updatedOrder = await storage.updateOrderStatus(orderId, status);
+      
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ message: "An error occurred while updating order status" });
+    }
+  });
   
   // Admin routes
   app.post("/api/admin/products", isAdmin, async (req, res) => {
