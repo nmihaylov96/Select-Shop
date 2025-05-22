@@ -13,6 +13,7 @@ import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Profile from "@/pages/Profile";
+import MyOrders from "@/pages/MyOrders";
 import Admin from "@/pages/Admin";
 import Checkout from "@/pages/Checkout";
 import PaymentConfirmation from "@/pages/PaymentConfirmation";
