@@ -103,6 +103,11 @@ const Admin: React.FC = () => {
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [API_ENDPOINTS.CATEGORIES],
   });
+
+  // Fetch all orders for admin
+  const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
+    queryKey: ['/api/admin/orders'],
+  });
   
   // Add product mutation
   const addProductMutation = useMutation({
@@ -261,6 +266,34 @@ const Admin: React.FC = () => {
   // Handle category form submission
   const onCategorySubmit = (values: CategoryFormValues) => {
     addCategoryMutation.mutate(values);
+  };
+
+  // Update order status mutation
+  const updateOrderStatusMutation = useMutation({
+    mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
+      const response = await apiRequest('PATCH', `/api/orders/${orderId}/status`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/orders'] });
+      toast({
+        title: "Статусът е актуализиран",
+        description: "Статусът на поръчката беше успешно актуализиран.",
+      });
+      setIsOrderDetailDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Грешка",
+        description: "Възникна грешка при актуализиране на статуса.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle order status change
+  const handleOrderStatusChange = (orderId: number, newStatus: string) => {
+    updateOrderStatusMutation.mutate({ orderId, status: newStatus });
   };
   
   // Set up edit product form when a product is selected
@@ -539,56 +572,52 @@ const Admin: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* First order */}
-                    <TableRow>
-                      <TableCell className="font-medium">1</TableCell>
-                      <TableCell>Regular User</TableCell>
-                      <TableCell>{new Date().toLocaleDateString('bg-BG')}</TableCell>
-                      <TableCell>Ul. Ivan Vazov 12, София</TableCell>
-                      <TableCell className="text-right font-bold">249.98 лв.</TableCell>
-                      <TableCell className="text-center">
-                        <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
-                          В очакване
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedOrderId(1);
-                            setIsOrderDetailDialogOpen(true);
-                          }}
-                        >
-                          Преглед
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {/* Second order */}
-                    <TableRow>
-                      <TableCell className="font-medium">2</TableCell>
-                      <TableCell>Regular User</TableCell>
-                      <TableCell>{new Date(Date.now() - 86400000).toLocaleDateString('bg-BG')}</TableCell>
-                      <TableCell>Ul. Ivan Vazov 12, София</TableCell>
-                      <TableCell className="text-right font-bold">129.99 лв.</TableCell>
-                      <TableCell className="text-center">
-                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                          Обработва се
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedOrderId(2);
-                            setIsOrderDetailDialogOpen(true);
-                          }}
-                        >
-                          Преглед
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    {orders && orders.length > 0 ? (
+                      orders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-medium">{order.id}</TableCell>
+                          <TableCell>Клиент #{order.userId}</TableCell>
+                          <TableCell>{new Date(order.createdAt).toLocaleDateString('bg-BG')}</TableCell>
+                          <TableCell>{order.address}, {order.city}</TableCell>
+                          <TableCell className="text-right font-bold">{formatPrice(order.total)}</TableCell>
+                          <TableCell className="text-center">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                              order.status === 'shipped' ? 'bg-purple-100 text-purple-800' :
+                              order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                              order.status === 'canceled' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {order.status === 'pending' ? 'В очакване' :
+                               order.status === 'processing' ? 'Обработва се' :
+                               order.status === 'shipped' ? 'Изпратена' :
+                               order.status === 'delivered' ? 'Доставена' :
+                               order.status === 'canceled' ? 'Отказана' :
+                               order.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedOrderId(order.id);
+                                setIsOrderDetailDialogOpen(true);
+                              }}
+                            >
+                              Преглед
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          Няма намерени поръчки
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -597,10 +626,21 @@ const Admin: React.FC = () => {
               <Dialog open={isOrderDetailDialogOpen} onOpenChange={setIsOrderDetailDialogOpen}>
                 <DialogContent className="max-w-3xl">
                   <DialogHeader>
-                    <DialogTitle>Поръчка #{selectedOrderId}</DialogTitle>
-                    <DialogDescription>
-                      Детайли за поръчката и статус на изпълнение
-                    </DialogDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <DialogTitle>Поръчка #{selectedOrderId}</DialogTitle>
+                        <DialogDescription>
+                          Детайли за поръчката и статус на изпълнение
+                        </DialogDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsOrderDetailDialogOpen(false)}
+                      >
+                        Назад към поръчки
+                      </Button>
+                    </div>
                   </DialogHeader>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
