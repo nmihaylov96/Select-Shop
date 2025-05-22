@@ -88,11 +88,8 @@ const Admin: React.FC = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [isOrderDetailDialogOpen, setIsOrderDetailDialogOpen] = useState(false);
   
-  // Check if user is admin
-  if (!authState.isAuthenticated || !authState.user?.isAdmin) {
-    navigate(ROUTES.HOME);
-    return null;
-  }
+  // Check if user is admin - moved after all hooks
+  const isAdmin = authState.isAuthenticated && authState.user?.isAdmin;
   
   // Fetch products
   const { data: products, isLoading: productsLoading } = useQuery<Product[]>({
