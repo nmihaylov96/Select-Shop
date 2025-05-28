@@ -584,7 +584,7 @@ export class MemStorage implements IStorage {
     this.createUser({
       username: "admin",
       email: "admin@sportzone.bg",
-      password: "admin123",
+      password: "password",
       firstName: "Admin",
       lastName: "User",
       isAdmin: true,
