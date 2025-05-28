@@ -60,6 +60,7 @@ const productSchema = z.object({
   categoryId: z.coerce.number(),
   image: z.string().url({ message: "Невалиден URL адрес" }),
   stock: z.coerce.number().min(0, { message: "Наличността не може да бъде отрицателно число" }),
+  brand: z.string().min(1, { message: "Марката е задължителна" }),
   badge: z.string().optional().nullable(),
   badgeEn: z.string().optional().nullable(),
   featured: z.boolean().default(false),
@@ -209,6 +210,7 @@ const Admin: React.FC = () => {
       categoryId: 1,
       image: "",
       stock: 0,
+      brand: "",
       badge: null,
       badgeEn: null,
       featured: false,
@@ -228,6 +230,7 @@ const Admin: React.FC = () => {
       categoryId: 1,
       image: "",
       stock: 0,
+      brand: "",
       badge: null,
       badgeEn: null,
       featured: false,
@@ -870,6 +873,23 @@ const Admin: React.FC = () => {
                               type="number" 
                               min="0" 
                               placeholder="0" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={productForm.control}
+                      name="brand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Марка *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Nike, Adidas, Puma, Wilson..." 
                               {...field} 
                             />
                           </FormControl>
