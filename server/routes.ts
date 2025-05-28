@@ -67,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    callbackURL: "/auth/google/callback"
+    callbackURL: "https://9d68213d-b98d-4ebf-b563-e7f6da2770f3-00-12ok8k4kpi067.janeway.replit.dev/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
