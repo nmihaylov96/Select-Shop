@@ -705,7 +705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.put("/api/admin/products/:id", isAdmin, async (req, res) => {
+  app.put("/api/admin/products/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const product = await storage.updateProduct(id, req.body);
