@@ -166,7 +166,10 @@ info@sportzone.bg | +359 888 123 456
 
     const msg = {
       to: user.email!,
-      from: 'noreply@sportzone.bg', // Можеш да смениш това с твоя домейн
+      from: {
+        email: 'nikolaymhaylov1996@gmail.com',
+        name: 'SportZone'
+      },
       subject: `✅ Потвърждение на поръчка #${order.id} - SportZone`,
       text: emailText,
       html: emailHtml,
@@ -241,7 +244,10 @@ export async function sendOrderStatusUpdateEmail(
 
     const msg = {
       to: user.email!,
-      from: 'noreply@sportzone.bg',
+      from: {
+        email: 'nikolaymhaylov1996@gmail.com',
+        name: 'SportZone'
+      },
       subject: `📋 Обновление на поръчка #${order.id} - SportZone`,
       html: emailHtml,
     };

@@ -702,7 +702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const testUser = {
         id: 1,
         username: "test",
-        email: "patoka2311@gmail.com", // Replace with your email
+        email: "nikolaymhaylov1996@gmail.com", // Your verified email
         firstName: "Test",
         lastName: "User",
         password: "",
