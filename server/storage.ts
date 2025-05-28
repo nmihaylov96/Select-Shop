@@ -376,6 +376,7 @@ export class MemStorage implements IStorage {
         rating: 4.5,
         reviewCount: 24,
         stock: 15,
+        brand: "Nike",
         badge: "Нов",
         badgeEn: "New",
         featured: true
@@ -393,6 +394,7 @@ export class MemStorage implements IStorage {
         rating: 5.0,
         reviewCount: 42,
         stock: 20,
+        brand: "Adidas",
         badge: "-15%",
         badgeEn: "-15%",
         featured: true
@@ -410,6 +412,7 @@ export class MemStorage implements IStorage {
         rating: 4.0,
         reviewCount: 18,
         stock: 8,
+        brand: "Garmin",
         badge: "Нов",
         badgeEn: "New",
         featured: true

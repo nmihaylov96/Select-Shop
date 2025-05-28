@@ -311,9 +311,10 @@ const Admin: React.FC = () => {
           categoryId: product.categoryId,
           image: product.image,
           stock: product.stock,
+          brand: product.brand || "",
           badge: product.badge || null,
           badgeEn: product.badgeEn || null,
-          featured: product.featured,
+          featured: product.featured || false,
         });
       }
     }
