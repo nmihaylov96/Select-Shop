@@ -1152,6 +1152,23 @@ const Admin: React.FC = () => {
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={editProductForm.control}
+                      name="brand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Марка *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Nike, Adidas, Puma, Wilson..." 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
