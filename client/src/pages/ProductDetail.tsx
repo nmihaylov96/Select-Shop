@@ -302,7 +302,7 @@ const ProductDetail: React.FC = () => {
                   </tr>
                   <tr className="border-b">
                     <td className="py-2 font-medium">Марка</td>
-                    <td className="py-2">SportZone</td>
+                    <td className="py-2">{product.brand}</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-2 font-medium">Рейтинг</td>
