@@ -136,8 +136,18 @@ const Admin: React.FC = () => {
       const response = await apiRequest('PUT', API_ENDPOINTS.ADMIN.PRODUCT(id), product);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedProduct) => {
+      // Invalidate all product-related queries
       queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.PRODUCTS] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.PRODUCT_DETAIL(currentProductId!)] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products/featured'] });
+      
+      // Also invalidate category-specific products if we know the category
+      if (updatedProduct?.categoryId) {
+        queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.PRODUCTS_BY_CATEGORY(updatedProduct.categoryId)] });
+      }
+      
       toast({
         title: "Успешно обновен продукт",
         description: "Продуктът беше успешно обновен.",
