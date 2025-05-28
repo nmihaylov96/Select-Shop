@@ -430,6 +430,7 @@ export class MemStorage implements IStorage {
         rating: 4.5,
         reviewCount: 36,
         stock: 5,
+        brand: "Wilson",
         badge: "Последни",
         badgeEn: "Last items",
         featured: true
@@ -447,6 +448,7 @@ export class MemStorage implements IStorage {
         rating: 5.0,
         reviewCount: 29,
         stock: 12,
+        brand: "Under Armour",
         badge: "-20%",
         badgeEn: "-20%",
         featured: true
@@ -464,6 +466,7 @@ export class MemStorage implements IStorage {
         rating: 4.0,
         reviewCount: 52,
         stock: 8,
+        brand: "PowerFit",
         badge: "Хит",
         badgeEn: "Hot",
         featured: true
@@ -481,6 +484,7 @@ export class MemStorage implements IStorage {
         rating: 4.5,
         reviewCount: 48,
         stock: 15,
+        brand: "Spalding",
         badge: "Топ",
         badgeEn: "Top",
         featured: true
@@ -498,6 +502,7 @@ export class MemStorage implements IStorage {
         rating: 4.0,
         reviewCount: 22,
         stock: 20,
+        brand: "FlexFit",
         badge: "-10%",
         badgeEn: "-10%",
         featured: true
@@ -515,6 +520,7 @@ export class MemStorage implements IStorage {
         rating: 4.7,
         reviewCount: 32,
         stock: 10,
+        brand: "Nike",
         badge: "Топ",
         badgeEn: "Top",
         featured: false
@@ -532,6 +538,7 @@ export class MemStorage implements IStorage {
         rating: 4.8,
         reviewCount: 15,
         stock: 3,
+        brand: "NordicTrack",
         badge: "-13%",
         badgeEn: "-13%",
         featured: false
