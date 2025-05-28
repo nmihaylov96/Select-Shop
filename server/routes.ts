@@ -6,6 +6,7 @@ import MemoryStore from "memorystore";
 import Stripe from "stripe";
 import passport from "passport";
 import LocalStrategy from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { insertUserSchema, insertCartItemSchema, insertOrderSchema, User, InsertUser } from "@shared/schema";
@@ -61,6 +62,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     })
   );
+
+  // Google OAuth strategy
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    callbackURL: "/auth/google/callback"
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    try {
+      // Check if user exists with this Google email
+      let user = await storage.getUserByEmail(profile.emails?.[0]?.value || '');
+      
+      if (user) {
+        // User exists, return them
+        return done(null, user);
+      } else {
+        // User doesn't exist, create new user
+        const newUser = await storage.createUser({
+          username: profile.emails?.[0]?.value || `google_${profile.id}`,
+          email: profile.emails?.[0]?.value || '',
+          password: '', // No password for Google users
+          firstName: profile.name?.givenName || '',
+          lastName: profile.name?.familyName || '',
+          address: null,
+          city: null,
+          phone: null,
+          isAdmin: false
+        });
+        return done(null, newUser);
+      }
+    } catch (error) {
+      return done(error);
+    }
+  }));
   
   passport.serializeUser((user: Express.User, done) => {
     done(null, (user as User).id);
@@ -215,6 +250,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     res.json(userWithoutPassword);
   });
+
+  // Google OAuth routes
+  app.get("/auth/google",
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
+
+  app.get("/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/login" }),
+    (req, res) => {
+      // Successful authentication, redirect to home
+      res.redirect("/");
+    }
+  );
   
   // Categories routes
   app.get("/api/categories", async (req, res) => {
