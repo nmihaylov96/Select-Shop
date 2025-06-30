@@ -9,7 +9,7 @@ import {
   Review, InsertReview, reviews
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ilike, or, desc } from "drizzle-orm";
+import { eq, and, ilike, like, or, desc } from "drizzle-orm";
 import { IStorage } from "./storage";
 
 // Database storage implementation
@@ -290,6 +290,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, orderId))
       .returning();
     return updatedOrder || undefined;
+  }
+
+  async deleteOrder(orderId: number): Promise<boolean> {
+    try {
+      // First delete order items
+      await db
+        .delete(orderItems)
+        .where(eq(orderItems.orderId, orderId));
+      
+      // Then delete the order
+      const result = await db
+        .delete(orders)
+        .where(eq(orders.id, orderId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      return false;
+    }
+  }
+
+  async searchOrders(query: string): Promise<Order[]> {
+    return await db
+      .select()
+      .from(orders)
+      .where(
+        or(
+          ilike(orders.phone, `%${query}%`),
+          ilike(orders.address, `%${query}%`),
+          ilike(orders.city, `%${query}%`),
+          ilike(orders.status, `%${query}%`)
+        )
+      )
+      .orderBy(desc(orders.createdAt));
   }
 
   async getReviewsByProduct(productId: number): Promise<any[]> {

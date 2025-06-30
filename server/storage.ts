@@ -50,6 +50,8 @@ export interface IStorage {
   getOrderById(id: number): Promise<Order | undefined>;
   getOrderItemsByOrder(orderId: number): Promise<OrderItem[]>;
   updateOrderStatus(orderId: number, status: string): Promise<Order | undefined>;
+  deleteOrder(orderId: number): Promise<boolean>;
+  searchOrders(query: string): Promise<Order[]>;
   
   // Review operations
   getReviewsByProduct(productId: number): Promise<any[]>;
@@ -320,6 +322,35 @@ export class MemStorage implements IStorage {
     const updatedOrder: Order = { ...order, status };
     this.orders.set(orderId, updatedOrder);
     return updatedOrder;
+  }
+
+  async deleteOrder(orderId: number): Promise<boolean> {
+    // Delete order items first
+    const itemsToDelete = Array.from(this.orderItems.values()).filter(item => item.orderId === orderId);
+    itemsToDelete.forEach(item => this.orderItems.delete(item.id));
+    
+    // Delete the order
+    return this.orders.delete(orderId);
+  }
+
+  async searchOrders(query: string): Promise<Order[]> {
+    const queryLower = query.toLowerCase();
+    return Array.from(this.orders.values()).filter(order =>
+      order.phone.toLowerCase().includes(queryLower) ||
+      order.address.toLowerCase().includes(queryLower) ||
+      order.city.toLowerCase().includes(queryLower) ||
+      order.status.toLowerCase().includes(queryLower)
+    );
+  }
+
+  async getReviewsByProduct(productId: number): Promise<any[]> {
+    // Placeholder implementation for MemStorage
+    return [];
+  }
+
+  async createReview(reviewData: any): Promise<any> {
+    // Placeholder implementation for MemStorage
+    return reviewData;
   }
 
   // Initialize demo data

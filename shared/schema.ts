@@ -122,6 +122,10 @@ export const orders = pgTable("orders", {
   address: text("address").notNull(),
   city: text("city").notNull(),
   phone: text("phone").notNull(),
+  paymentMethod: text("payment_method").notNull().default("card"), // "card" или "cash"
+  deliveryMethod: text("delivery_method").notNull().default("courier"), // "courier" или "office"
+  courierCompany: text("courier_company"), // Speedy, Econt, DHL и т.н.
+  officeAddress: text("office_address"), // адрес на офиса ако е избран офис
 });
 
 export const insertOrderSchema = createInsertSchema(orders).pick({
@@ -131,6 +135,10 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
   address: true,
   city: true,
   phone: true,
+  paymentMethod: true,
+  deliveryMethod: true,
+  courierCompany: true,
+  officeAddress: true,
 });
 
 // Order Items

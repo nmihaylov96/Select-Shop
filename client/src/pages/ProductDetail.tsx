@@ -15,7 +15,7 @@ import ProductReviews from '@/components/product/ProductReviews';
 
 const ProductDetail: React.FC = () => {
   const [match, params] = useRoute<{ id: string }>('/product/:id');
-  const productId = parseInt(params?.id || '0');
+  const productId = match && params ? parseInt(params.id) : 0;
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
 

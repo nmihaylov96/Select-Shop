@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const CategoryPage: React.FC = () => {
   const [match, params] = useRoute<{ id: string }>('/category/:id');
-  const categoryId = parseInt(params?.id || '0');
+  const categoryId = match && params ? parseInt(params.id) : 0;
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('featured');
   

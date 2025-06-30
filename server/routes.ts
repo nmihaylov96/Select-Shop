@@ -13,9 +13,9 @@ import { insertUserSchema, insertCartItemSchema, insertOrderSchema, User, Insert
 import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from './email';
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16" as any,
-});
+}) : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session
@@ -63,13 +63,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
   );
 
-  // Google OAuth strategy
-  passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID!,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    callbackURL: "/auth/google/callback"
-  },
-  async (accessToken, refreshToken, profile, done) => {
+  // Google OAuth strategy (only if credentials are available)
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "/auth/google/callback"
+    },
+    async (accessToken, refreshToken, profile, done) => {
     try {
       // Check if user exists with this Google email
       let user = await storage.getUserByEmail(profile.emails?.[0]?.value || '');
@@ -96,6 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return done(error);
     }
   }));
+  }
   
   passport.serializeUser((user: Express.User, done) => {
     done(null, (user as User).id);
@@ -373,6 +375,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!amount || typeof amount !== 'number' || amount <= 0) {
         return res.status(400).json({ message: "Invalid amount" });
+      }
+      
+      if (!stripe) {
+        return res.status(500).json({ message: "Payment service not configured" });
       }
       
       const paymentIntent = await stripe.paymentIntents.create({
@@ -683,14 +689,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get all orders for admin
+  // Get all orders for admin (with search and filtering)
   app.get("/api/admin/orders", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const orders = await storage.getAllOrders();
+      const { search, status } = req.query;
+      let orders: Order[];
+      
+      if (search) {
+        orders = await storage.searchOrders(search as string);
+      } else {
+        orders = await storage.getAllOrders();
+      }
+      
+      // Filter by status if provided
+      if (status && status !== 'all') {
+        orders = orders.filter(order => order.status === status);
+      }
+      
+      // Sort by creation date (newest first)
+      orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
       res.json(orders);
     } catch (error) {
       console.error("Error fetching all orders:", error);
       res.status(500).json({ message: "An error occurred while fetching orders" });
+    }
+  });
+
+  // Delete order (Admin only)
+  app.delete("/api/admin/orders/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      
+      if (isNaN(orderId)) {
+        return res.status(400).json({ message: "Invalid order ID" });
+      }
+      
+      const success = await storage.deleteOrder(orderId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Order not found or could not be deleted" });
+      }
+      
+      res.json({ message: "Order deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      res.status(500).json({ message: "An error occurred while deleting the order" });
     }
   });
 

@@ -88,6 +88,8 @@ const Admin: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [isOrderDetailDialogOpen, setIsOrderDetailDialogOpen] = useState(false);
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
   
   // Check if user is admin - moved after all hooks
   const isAdmin = authState.isAuthenticated && authState.user?.isAdmin;
@@ -104,7 +106,22 @@ const Admin: React.FC = () => {
 
   // Fetch all orders for admin
   const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ['/api/admin/orders'],
+    queryKey: ['/api/admin/orders', orderSearchQuery, orderStatusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (orderSearchQuery) params.append('search', orderSearchQuery);
+      if (orderStatusFilter !== 'all') params.append('status', orderStatusFilter);
+      
+      const response = await fetch(`/api/admin/orders?${params.toString()}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+      
+      return response.json();
+    },
   });
   
   // Add product mutation
@@ -202,6 +219,28 @@ const Admin: React.FC = () => {
       toast({
         title: "Грешка",
         description: "Възникна грешка при добавяне на категорията.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete order mutation
+  const deleteOrderMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      const response = await apiRequest('DELETE', `/api/admin/orders/${orderId}`, null);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/orders'] });
+      toast({
+        title: "Поръчката е изтрита",
+        description: "Поръчката беше успешно изтрита.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Грешка",
+        description: "Възникна грешка при изтриване на поръчката.",
         variant: "destructive",
       });
     },
@@ -547,7 +586,7 @@ const Admin: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold font-heading">Управление на поръчки</h2>
                 <div className="flex gap-2">
-                  <Select defaultValue="all">
+                  <Select value={orderStatusFilter} onValueChange={setOrderStatusFilter}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Филтрирай по статус" />
                     </SelectTrigger>
@@ -560,11 +599,18 @@ const Admin: React.FC = () => {
                       <SelectItem value="canceled">Отказана</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input 
-                    type="text" 
-                    placeholder="Търсене на поръчка..."
-                    className="w-[250px]"
-                  />
+                  <div className="relative">
+                    <Input 
+                      type="text" 
+                      placeholder="Търсене на поръчка..."
+                      value={orderSearchQuery}
+                      onChange={(e) => setOrderSearchQuery(e.target.value)}
+                      className="w-[250px] pl-10"
+                    />
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                      <SearchIcon />
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -609,16 +655,30 @@ const Admin: React.FC = () => {
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedOrderId(order.id);
-                                setIsOrderDetailDialogOpen(true);
-                              }}
-                            >
-                              Преглед
-                            </Button>
+                            <div className="flex gap-2 justify-center">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedOrderId(order.id);
+                                  setIsOrderDetailDialogOpen(true);
+                                }}
+                              >
+                                Преглед
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Сигурни ли сте, че искате да изтриете тази поръчка?')) {
+                                    deleteOrderMutation.mutate(order.id);
+                                  }
+                                }}
+                                disabled={deleteOrderMutation.isPending}
+                              >
+                                <TrashIcon />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -669,6 +729,24 @@ const Admin: React.FC = () => {
                       <div className="space-y-2">
                         <p><span className="font-medium">Адрес:</span> Ul. Ivan Vazov 12</p>
                         <p><span className="font-medium">Град:</span> София</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Начин на плащане</h3>
+                      <div className="space-y-2">
+                        <p><span className="font-medium">Метод:</span> Плащане с карта</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Начин на доставка</h3>
+                      <div className="space-y-2">
+                        <p><span className="font-medium">Метод:</span> До офис на куриер</p>
+                        <p><span className="font-medium">Куриерска фирма:</span> Speedy</p>
+                        <p><span className="font-medium">Адрес на офиса:</span> ул. Витоша 15, София</p>
                       </div>
                     </div>
                   </div>

@@ -1,11 +1,9 @@
 import sgMail from '@sendgrid/mail';
 import type { Order, OrderItem, Product, User } from '@shared/schema';
 
-if (!process.env.SENDGRID_API_KEY) {
-  throw new Error("SENDGRID_API_KEY environment variable must be set");
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 interface OrderEmailData {
   order: Order;
@@ -14,6 +12,11 @@ interface OrderEmailData {
 }
 
 export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<boolean> {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('[email] SENDGRID_API_KEY not set, skipping email send');
+    return true;
+  }
+  
   try {
     const { order, orderItems, user } = data;
     
@@ -190,6 +193,11 @@ export async function sendOrderStatusUpdateEmail(
   oldStatus: string, 
   newStatus: string
 ): Promise<boolean> {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('[email] SENDGRID_API_KEY not set, skipping email send');
+    return true;
+  }
+  
   try {
     const statusEmoji = {
       'pending': '⏳',

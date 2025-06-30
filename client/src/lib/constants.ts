@@ -21,6 +21,8 @@ export const API_ENDPOINTS = {
     PRODUCTS: '/api/admin/products',
     PRODUCT: (id: number) => `/api/admin/products/${id}`,
     CATEGORIES: '/api/admin/categories',
+    ORDERS: '/api/admin/orders',
+    ORDER: (id: number) => `/api/admin/orders/${id}`,
   }
 };
 
