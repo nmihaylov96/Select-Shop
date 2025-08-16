@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { insertUserSchema, insertCartItemSchema, insertOrderSchema, User, InsertUser } from "@shared/schema";
 import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from './email';
+import cors from "cors";
 
 // Initialize Stripe
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
